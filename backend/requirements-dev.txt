@@ -1,0 +1,17 @@
+-r requirements.txt
+pytest==9.2.0
+pytest-cov==7.1.0
+pytest-asyncio==1.4.1.post1
+httpx==0.28.1
+ruff==0.17.3
+black==26.10.1
+mypy==2.4.1
+types-requests==2.33.0.20261030
+
+# Validateur OFFICIEL OASIS : juge l'export STIX 2.1 dans les tests
+# (pipeline/reporting/stix.py). Developpement seulement.
+# ⚠️ 3.2.0 et NON 3.3.1 : le paquet 3.3.1 publie sur PyPI est livre SANS ses
+# schemas (0 fichier JSON, contre 137 en 3.2.0 -- verifie le 2026-09-30) et
+# leve « Cannot locate a schema » sur tout objet. Ne pas mettre a jour sans
+# reverifier le contenu du paquet.
+stix2-validator==3.2.0

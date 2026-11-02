@@ -1,0 +1,186 @@
+
+# Réseaux cloisonnés :
+#   - app_net     : backend <-> db/redis (worker sera ajouté quand implémenté)
+#   - collect_net : backend/worker <-> Tor, séparé de app_net (OPSEC : le trafic de
+#     collecte ne transite jamais par le réseau où vit la DB). Pas de `internal: true`
+#     ici : Tor a besoin d'un accès internet direct pour joindre le réseau Tor réel
+#     (annuaires/relais) — un réseau `internal` coupe TOUT accès externe, empêchant
+#     tout bootstrap (bug constaté : Tor restait bloqué à 0% indéfiniment).
+networks:
+  app_net:
+  collect_net:
+
+volumes:
+  postgres_data:
+  redis_data:
+  translation_models:
+  # Session du compte de lecture Telegram (MTProto) : un SECRET, elle vaut le
+  # compte. Partagee par l'API (collecte a la demande) et le worker (collecte
+  # planifiee) ; l'acces est serialise par un verrou de fichier -- voir
+  # pipeline/collect/telegram/mtproto_client.py.
+  telegram_session:
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  tor:
+    build:
+      context: ./tor
+      args:
+        TOR_CONTROL_PASSWORD: ${TOR_CONTROL_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - collect_net
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tor:
+        condition: service_started
+    networks:
+      - app_net
+      - collect_net
+    volumes:
+      - translation_models:/app/translation_models
+      - telegram_session:/telegram-session
+    extra_hosts:
+      # Permet d'atteindre un Ollama natif sur l'hôte (voir OLLAMA_BASE_URL) —
+      # résolu nativement par Docker Desktop, nécessaire ici pour Docker Engine Linux.
+      - "host.docker.internal:host-gateway"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # Exécute les tâches planifiées (collecte, alerting) — voir app/worker/.
+  # Même image que `backend` : le worker partage tout le code métier
+  # (services/, pipeline/), seule la commande diffère. Il a besoin des deux
+  # réseaux comme le backend : app_net pour db/redis, collect_net pour Tor.
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tor:
+        condition: service_started
+    networks:
+      - app_net
+      - collect_net
+    volumes:
+      - translation_models:/app/translation_models
+      - telegram_session:/telegram-session
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # `-Q celery` : ne consomme QUE la file par defaut. La file `links`
+    # (verification de vivacite des liens, jusqu'a ~2h) a son propre worker
+    # ci-dessous -- sans cette separation, une passe de liens monopoliserait
+    # ce worker et bloquerait la collecte et l'alerting horaire.
+    command: celery -A app.worker.celery_app.celery_app worker --loglevel=info -Q celery
+
+  # Worker dedie a la file `links` (voir worker/tasks/link_tasks.py). Separe du
+  # worker principal parce que sa tache est longue et purement observationnelle :
+  # elle ne doit jamais retarder la generation des alertes, qui est le livrable
+  # du produit (CONTRIBUTING.md §1). Memes reseaux que le worker principal : app_net
+  # pour la base (lecture des documents), collect_net pour Tor.
+  worker-links:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tor:
+        condition: service_started
+    networks:
+      - app_net
+      - collect_net
+    volumes:
+      - translation_models:/app/translation_models
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: celery -A app.worker.celery_app.celery_app worker --loglevel=info -Q links
+
+  # Worker dedie a la file `dread` (voir worker/tasks/dread_tasks.py). Meme
+  # raison que `worker-links` : un cycle Dread dure ~25 min (Tor + Playwright,
+  # ~34 s par corps de fil mesures le 2026-08-19) et le worker principal ne
+  # prend qu'une tache a la fois (`worker_prefetch_multiplier=1`) -- sur la
+  # file par defaut, Dread bloquerait la collecte des autres sources ET
+  # l'alerting horaire, qui est le livrable du produit (CONTRIBUTING.md §1).
+  worker-dread:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tor:
+        condition: service_started
+    networks:
+      - app_net
+      - collect_net
+    volumes:
+      - translation_models:/app/translation_models
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: celery -A app.worker.celery_app.celery_app worker --loglevel=info -Q dread
+
+  # Ordonnanceur : déclenche les tâches aux heures définies dans
+  # app/worker/schedules.py. Séparé du worker (recommandation Celery) — un seul
+  # beat doit tourner, alors que les workers peuvent être multipliés.
+  # Pas de collect_net : beat ne collecte rien, il ne fait qu'envoyer des
+  # messages dans Redis (moindre privilège réseau).
+  beat:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app_net
+    command: celery -A app.worker.celery_app.celery_app beat --loglevel=info

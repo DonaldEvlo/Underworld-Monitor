@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Marque « la faille ». Le fond sombre est explicite : l'onglet peut etre
+       clair ou sombre selon le navigateur, et un trace vert seul disparaitrait
+       sur fond clair. -->
+  <defs>
+    <mask id="coupe" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+      <rect x="0" y="0" width="48" height="48" fill="#fff"/>
+      <path d="M11.6 38.7 L33.8 9.2" stroke="#000" stroke-width="5" stroke-linecap="butt"/>
+    </mask>
+  </defs>
+  <rect x="0" y="0" width="48" height="48" rx="10" fill="#04070a"/>
+  <g fill="none" stroke="#3ee8b8" stroke-width="2.3">
+    <path d="M22.7 9.1 L35.5 16.5 L35.5 31.5 L22.7 38.9 L9.9 31.5 L9.9 16.5 Z"
+          stroke-linejoin="miter" mask="url(#coupe)"/>
+    <path d="M17.4 32.5 L28 15.5" stroke-linecap="butt"/>
+  </g>
+</svg>

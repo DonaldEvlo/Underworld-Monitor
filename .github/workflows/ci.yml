@@ -1,0 +1,105 @@
+# Integration continue : ce qui empeche une regression d'arriver sur la branche principale.
+#
+# Les tests d'integration tournent sur un PostgreSQL 16 VIERGE, migrations
+# appliquees : ils ne dependent donc d'aucune donnee de developpement, et
+# chaque test s'execute dans une transaction annulee
+# (backend/app/tests/integration/conftest.py).
+#
+# Rien ici ne touche au reseau Tor ni a une source : les tests n'en ont pas
+# besoin (fetchers injectes), et une CI ne doit jamais collecter (regle 3).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint:
+    name: Backend · ruff + black
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Memes versions que requirements-dev.txt : un formateur d'une autre
+      # version reformaterait autrement et ferait echouer la CI a tort.
+      - run: pip install ruff==0.17.3 black==26.10.1
+      - run: ruff check .
+      - run: black --check .
+
+  backend-tests:
+    name: Backend · tests unitaires et d'integration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: threat_intel_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d threat_intel_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/threat_intel_ci
+      # Valeurs de test uniquement, jamais des secrets reels (regle 4).
+      JWT_SECRET_KEY: ci-only-not-a-secret
+      PASSWORD_HASH_PEPPER: ci-only-not-a-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      # Memes options que le Dockerfile : l'index PyTorch et PyPI connaissent
+      # des echecs passagers.
+      - run: pip install --timeout 120 --retries 10 -r requirements-dev.txt
+      # Le modele NER est telecharge au build dans le Dockerfile ; les tests de
+      # detection d'organisations en ont besoin.
+      - run: python -m spacy download en_core_web_sm
+      # Perimetre progressif defini dans backend/pyproject.toml (le coeur,
+      # a zero erreur). Apres l'installation : mypy doit voir les vrais types
+      # de SQLAlchemy et Pydantic, pas des `Any`.
+      - name: Types (mypy, coeur)
+        run: mypy
+      - name: Tests unitaires
+        run: python -m pytest app/tests/unit -q -p no:cacheprovider
+      - name: Migrations sur base vierge
+        run: alembic upgrade head
+      - name: Tests d'integration
+        run: python -m pytest app/tests/integration -q -p no:cacheprovider
+
+  frontend:
+    name: Frontend · types, lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build

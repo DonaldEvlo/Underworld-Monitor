@@ -1,0 +1,68 @@
+# Environnement : seul le modèle .env.example est versionné.
+.env
+.env.*
+*.env.local
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Bases locales
+*.sqlite3
+*.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Documents générés (rapports PDF, exports)
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+~$*
+
+# Sauvegardes et dumps (ils contiennent des données collectées)
+*.bak
+*.orig
+*.dump
+backups/
+
+# Tor
+tor/data/
+tor/*.log
+
+# Session Telegram (MTProto) : elle vaut le compte. Elle vit dans un volume
+# Docker ; cette règle est une sécurité si elle atterrit dans le dépôt.
+*.session
+*.session-journal
+*.session.lock
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Fichiers d'assistants de code : jamais dans le dépôt
+CLAUDE.md
+.claude/

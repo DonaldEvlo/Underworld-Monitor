@@ -1,0 +1,13 @@
+# Dependance ponctuelle pour convertir un nouveau modele HuggingFace vers le
+# format ctranslate2 -- voir app/scripts/convert_translation_model.py.
+# torch/transformers sont deja dans requirements.txt (necessaires a l'inference,
+# voir enrich/translate.py) ; seul huggingface_hub (telechargement du modele
+# source) manque a l'image de prod.
+#
+#   docker compose exec backend pip install -r requirements-convert.txt
+#   docker compose exec backend python -m app.scripts.convert_translation_model ru en
+
+# ⚠️ Etait epingle a 1.24.0, version INTROUVABLE sur PyPI (constate le
+# 2026-09-21) : l'installation echouait et la procedure ci-dessus etait donc
+# cassee. 1.30.0 est la version verifiee avec transformers 5.14.1.
+huggingface_hub==1.30.0

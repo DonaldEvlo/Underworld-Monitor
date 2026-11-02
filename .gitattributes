@@ -1,0 +1,5 @@
+# Fins de ligne LF dans le depot : le code tourne dans des conteneurs Linux.
+* text=auto eol=lf
+*.woff2 binary
+*.png binary
+*.ico binary

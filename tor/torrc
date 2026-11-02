@@ -1,0 +1,5 @@
+SocksPort 0.0.0.0:9050
+ControlPort 0.0.0.0:9051
+Log notice stdout
+# HashedControlPassword ajouté au build (voir Dockerfile), à partir de
+# TOR_CONTROL_PASSWORD (.env) — jamais de mot de passe en clair ici.

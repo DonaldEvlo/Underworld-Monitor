@@ -1,0 +1,458 @@
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-variable.woff2") format("woff2");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-variable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-variable.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+/* ⚠️ « Material Symbols Outlined » a ete RETIRE. Les icones venaient d'un
+   <link> vers fonts.googleapis.com : quand cette feuille n'arrivait pas (poste
+   hors ligne, proxy filtrant), le navigateur affichait le NOM de l'icone en
+   toutes lettres — « shield_person », « delete_forever » — au milieu de
+   l'interface. Constate en conditions reelles. Les icones sont desormais
+   dessinees et embarquees : voir components/ui/icones.tsx. */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #2a3441;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4a5763;
+}
+
+/* Grain tres subtil sur le fond -- casse la planeite numerique du void sans
+   etre visible consciemment. Desactive si l'utilisateur reduit les animations
+   n'a pas d'incidence ici (statique, pas une animation). */
+.void-texture {
+  background-image: radial-gradient(circle at 15% 20%, rgba(62, 232, 184, 0.05), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(94, 200, 240, 0.03), transparent 40%);
+}
+
+@keyframes pulse-critical {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.animate-pulse-critical {
+  animation: pulse-critical 2s infinite ease-in-out;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.status-pulse {
+  animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Forme de signature : panneaux organiques a bordure vivante, pas des coins
+   coupes anguleux ni des rectangles SaaS generiques. Le contour respire
+   doucement (pulse-border) -- un panneau "actif" a un pouls, pas juste une
+   bordure statique. */
+.pulse-panel {
+  position: relative;
+  border-radius: 18px;
+  background: var(--tw-panel, #0f151d);
+  border: 1px solid rgba(62, 232, 184, 0.14);
+  transition: border-color 0.4s ease;
+}
+.pulse-panel:hover {
+  border-color: rgba(62, 232, 184, 0.4);
+}
+@keyframes pulse-border {
+  0%,
+  100% {
+    border-color: rgba(62, 232, 184, 0.14);
+    box-shadow: 0 0 0 0 rgba(62, 232, 184, 0);
+  }
+  50% {
+    border-color: rgba(62, 232, 184, 0.32);
+    box-shadow: 0 0 16px -4px rgba(62, 232, 184, 0.25);
+  }
+}
+.pulse-panel-live {
+  animation: pulse-border 3.2s ease-in-out infinite;
+}
+
+/* Trace d'oscilloscope -- element de signature evoquant un signal vital
+   continu. Une ligne qui se dessine en boucle douce en fond du hero,
+   purement decorative (aria-hidden cote composant). */
+@keyframes ecg-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -400;
+  }
+}
+.ecg-trace {
+  stroke-dasharray: 6 5;
+  animation: ecg-flow 6s linear infinite;
+}
+
+/* Battement -- un point/badge "vivant" bat doucement comme un pouls plutot
+   que de clignoter en on/off. */
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.18);
+  }
+  30% {
+    transform: scale(0.96);
+  }
+  45% {
+    transform: scale(1.08);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+.heartbeat {
+  animation: heartbeat 2.4s ease-in-out infinite;
+}
+
+/* Ligne de balayage horizontale -- traverse un bandeau une fois, effet
+   "scan" au montage plutot qu'une boucle infinie distrayante. */
+@keyframes scanline-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, rgba(62, 232, 184, 0.5), transparent);
+  animation: scanline-sweep 2.4s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* Entree echelonnee -- cartes/lignes qui apparaissent en cascade au montage
+   plutot que toutes d'un coup. Le delai est porte par --stagger (voir usage
+   inline `style={{ animationDelay: ... }}`). */
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.stagger-in {
+  animation: stagger-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tracé de sparkline -- la ligne se dessine au montage au lieu d'apparaitre
+   figee. `stroke-dasharray`/`stroke-dashoffset` fixes en JS (voir Sparkline.tsx). */
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.sparkline-draw {
+  animation: draw-line 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes shimmer-bar {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+.bar-grow {
+  transform-origin: bottom;
+  animation: shimmer-bar 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Sequence d'entree de la page de connexion -- premiere impression de la
+   plateforme, orchestree en plusieurs temps plutot qu'un simple fade global :
+   le logo "s'initialise" (scale+scan), puis le panneau monte avec un flou qui
+   se resorbe, puis chaque champ arrive en cascade courte. */
+@keyframes login-logo-boot {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+.login-logo-boot {
+  animation: login-logo-boot 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes login-panel-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.login-panel-rise {
+  animation: login-panel-rise 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.15s;
+}
+
+@keyframes login-field-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.login-field-in {
+  animation: login-field-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Balayage lumineux qui traverse le panneau une seule fois au montage --
+   effet "mise sous tension" plutot qu'une boucle continue. */
+@keyframes login-panel-charge {
+  from {
+    transform: translateX(-120%) skewX(-15deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-15deg);
+  }
+}
+.login-panel-charge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(62, 232, 184, 0.16), transparent);
+  width: 40%;
+  animation: login-panel-charge 1.3s cubic-bezier(0.65, 0, 0.35, 1) both;
+  animation-delay: 0.5s;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Fond de la page de connexion : deux lueurs qui derivent lentement, une
+   grille estompee en vignette, un balayage vertical, le trace d'oscilloscope
+   qui se dessine. Tout est decoratif (aria-hidden) et coupe en mouvement
+   reduit. Remplace le champ de particules canvas, plus couteux et qui ne
+   disait rien du produit. */
+.login-grid {
+  background-image: linear-gradient(rgba(33, 48, 64, 0.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(33, 48, 64, 0.28) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 80%);
+}
+@keyframes login-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 5%, 0) scale(1.12);
+  }
+}
+.login-drift-a {
+  animation: login-drift-a 26s ease-in-out infinite;
+}
+@keyframes login-drift-b {
+  0%,
+  100% {
+    transform: translate3d(5%, 6%, 0) scale(1.08);
+  }
+  50% {
+    transform: translate3d(-5%, -6%, 0) scale(1);
+  }
+}
+.login-drift-b {
+  animation: login-drift-b 34s ease-in-out infinite;
+}
+/* ⚠️ `130vh` et non `130%` : la maquette deplacait la bande de 130 % de SA
+   PROPRE hauteur (220 px), soit a peine 286 px — le balayage ne traversait
+   jamais l'ecran. */
+@keyframes login-scan {
+  0% {
+    transform: translateY(-30%);
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(130vh);
+    opacity: 0;
+  }
+}
+.login-scan {
+  background: linear-gradient(
+    180deg,
+    rgba(62, 232, 184, 0) 0%,
+    rgba(62, 232, 184, 0.07) 50%,
+    rgba(62, 232, 184, 0) 100%
+  );
+  animation: login-scan 11s linear infinite;
+}
+@keyframes login-trace {
+  0% {
+    stroke-dashoffset: 2600;
+  }
+  55% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -2600;
+  }
+}
+.login-trace {
+  stroke-dasharray: 2600;
+  animation: login-trace 9s linear infinite;
+}
+@keyframes login-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+.login-twinkle {
+  animation: login-twinkle 5.4s ease-in-out infinite;
+}
+@keyframes login-halo {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.login-halo {
+  animation: login-halo 9s linear infinite;
+}
+@keyframes login-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(320%);
+  }
+}
+.login-sheen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: login-sheen 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* ⚠️ Masques et non figes : immobiles, le reflet deviendrait une bande
+     blanche fixe sur le bouton et le balayage une barre posee en haut. */
+  .login-sheen::before,
+  .login-scan {
+    display: none;
+  }
+  .animate-pulse-critical,
+  .status-pulse,
+  .pulse-panel-live,
+  .ecg-trace,
+  .heartbeat,
+  .scanline::after,
+  .stagger-in,
+  .sparkline-draw,
+  .bar-grow,
+  .login-logo-boot,
+  .login-panel-rise,
+  .login-field-in,
+  .login-drift-a,
+  .login-drift-b,
+  .login-trace,
+  .login-twinkle,
+  .login-halo,
+  .login-panel-charge::after {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

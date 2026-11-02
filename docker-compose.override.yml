@@ -1,0 +1,26 @@
+
+# Surcharges de dev : port exposé sur l'hôte + hot-reload.
+# Chargé automatiquement par `docker compose up` en local, à ne pas utiliser en prod.
+services:
+  backend:
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      # Configuration des outils (mypy) : sans ce montage, `make typecheck`
+      # ne trouve pas son perimetre dans le conteneur de dev.
+      - ./backend/pyproject.toml:/app/pyproject.toml:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Interface web pour inspecter la base en dev (jamais de Postgres installé
+  # en local, tout passe par ce service ou docker exec).
+  # Dev uniquement -- absent de docker-compose.yml, jamais construit en prod.
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - app_net
+  

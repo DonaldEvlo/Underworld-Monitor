@@ -1,0 +1,48 @@
+# Configuration des outils. `black` garde ses reglages par defaut.
+
+[tool.ruff.lint]
+# Jeu de regles historique du projet, fixe explicitement : ruff 0.17 a elargi
+# ses regles par defaut (UP, B, EXE...). Les adopter est un chantier a part.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+python_version = "3.12"
+# Bibliotheques sans annotations (spaCy, ctranslate2, stem...) : traitees
+# comme `Any` plutot que de bloquer. `types-requests` est installe a part.
+ignore_missing_imports = true
+warn_unused_ignores = true
+exclude = ["cyberscraper", "tests"]
+
+# ⚠️ PERIMETRE PROGRESSIF (2026-09-25). Seul le COEUR est verifie, et il est a
+# ZERO erreur : contrats, modeles, logique pure (hors collecte), depots,
+# services. Mesure de depart sur toute l'application : 147 erreurs ; 74
+# restent hors perimetre (collecteurs 53, routeurs, core/llm, scripts).
+# Etendre en AJOUTANT des repertoires ici une fois nettoyes -- jamais en
+# relachant une regle pour faire passer un fichier.
+files = [
+    "app/contracts",
+    "app/db",
+    "app/pipeline/alerting",
+    "app/pipeline/classify",
+    "app/pipeline/detect",
+    "app/pipeline/enrich",
+    "app/pipeline/evaluation",
+    "app/pipeline/process",
+    "app/pipeline/reporting",
+    "app/repositories",
+    "app/services",
+]
+
+# Modules HORS perimetre que le coeur importe : leurs TYPES sont lus (sinon le
+# coeur serait verifie contre des `Any`), leurs ERREURS ne sont pas rapportees.
+# Retirer un module de cette liste = l'ajouter au perimetre.
+[[tool.mypy.overrides]]
+module = [
+    "app.pipeline.collect.*",
+    "app.core.*",
+    "app.api.*",
+    "app.worker.*",
+    "app.scripts.*",
+    "app.main",
+]
+follow_imports = "silent"
